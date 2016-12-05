@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+rm -f dist/*
+cp -v */target/srwpseudocontraction.*.jar dist
+
