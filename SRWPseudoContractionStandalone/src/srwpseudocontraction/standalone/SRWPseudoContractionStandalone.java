@@ -93,7 +93,7 @@ public class SRWPseudoContractionStandalone {
             return;
         }
 
-        System.out.printf("Success! Ontology saved to '%s'.", outputFileName);
+        System.out.printf("Success! Ontology saved to '%s'.\n", outputFileName);
     }
 
     private boolean isHelp() {
