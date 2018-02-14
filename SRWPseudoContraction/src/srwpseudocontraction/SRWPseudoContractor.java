@@ -1,9 +1,12 @@
 package srwpseudocontraction;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.AxiomType;
@@ -17,18 +20,9 @@ import org.semanticweb.owlapi.reasoner.OWLReasoner;
 import org.semanticweb.owlapi.reasoner.OWLReasonerFactory;
 import org.semanticweb.owlapi.util.InferredAxiomGenerator;
 import org.semanticweb.owlapi.util.InferredClassAssertionAxiomGenerator;
-import org.semanticweb.owlapi.util.InferredDataPropertyCharacteristicAxiomGenerator;
-import org.semanticweb.owlapi.util.InferredDisjointClassesAxiomGenerator;
-import org.semanticweb.owlapi.util.InferredEquivalentClassAxiomGenerator;
-import org.semanticweb.owlapi.util.InferredEquivalentDataPropertiesAxiomGenerator;
-import org.semanticweb.owlapi.util.InferredEquivalentObjectPropertyAxiomGenerator;
-import org.semanticweb.owlapi.util.InferredInverseObjectPropertiesAxiomGenerator;
-import org.semanticweb.owlapi.util.InferredObjectPropertyCharacteristicAxiomGenerator;
 import org.semanticweb.owlapi.util.InferredOntologyGenerator;
 import org.semanticweb.owlapi.util.InferredPropertyAssertionGenerator;
 import org.semanticweb.owlapi.util.InferredSubClassAxiomGenerator;
-import org.semanticweb.owlapi.util.InferredSubDataPropertyAxiomGenerator;
-import org.semanticweb.owlapi.util.InferredSubObjectPropertyAxiomGenerator;
 
 /**
  * Implements a Belief Revision operation proposed by Santos, Ribeiro and
@@ -68,8 +62,7 @@ public class SRWPseudoContractor {
     private int maxQueueSize = Integer.MAX_VALUE;
 
     /**
-     * The maximum number of elements of the remainder set that will be
-     * computed.
+     * The maximum number of elements of the remainder set that will be computed.
      */
     private int maxRemainderElements = Integer.MAX_VALUE;
 
@@ -83,8 +76,8 @@ public class SRWPseudoContractor {
      * @param gamma
      *            a selection function implementation
      */
-    public SRWPseudoContractor(OWLOntologyManager manager, OWLReasonerFactory reasonerFactory,
-            SelectionFunction gamma) {
+    public SRWPseudoContractor(OWLOntologyManager manager,
+            OWLReasonerFactory reasonerFactory, SelectionFunction gamma) {
         this.manager = manager;
         this.reasonerFactory = reasonerFactory;
         this.gamma = gamma;
@@ -101,64 +94,97 @@ public class SRWPseudoContractor {
      * @throws OWLException
      *             OWLException
      */
-    public Set<OWLAxiom> pseudocontract(OWLOntology ontology, OWLAxiom sentence) throws OWLException {
+    public Set<OWLAxiom> pseudocontract(OWLOntology ontology, OWLAxiom sentence)
+            throws OWLException {
+        if (Logger.getLogger("SRW").isLoggable(Level.FINE)) {
+            Logger.getLogger("SRW").log(Level.FINE,
+                    "\n---------- ORIGINAL ONTOLOGY: \n"
+                            + HumanReadableAxiomExpressionGenerator
+                                    .generateExpressionForSet(ontology.getAxioms()));
+            Logger.getLogger("SRW").log(Level.FINE,
+                    "\n---------- FORMULA TO BE CONTRACTED: \n"
+                            + HumanReadableAxiomExpressionGenerator
+                                    .generateExpression(sentence));
+        }
         // create reasoner
         OWLReasoner reasoner = reasonerFactory.createReasoner(ontology);
-
         // close under Cn*
         OWLOntology inferredOntology = manager.createOntology();
         List<InferredAxiomGenerator<? extends OWLAxiom>> gens = allAxiomGenerators();
-        InferredOntologyGenerator ontologyGenerator = new InferredOntologyGenerator(reasoner, gens);
+        InferredOntologyGenerator ontologyGenerator = new InferredOntologyGenerator(
+                reasoner, gens);
         ontologyGenerator.fillOntology(manager.getOWLDataFactory(), inferredOntology);
-
+        manager.addAxioms(inferredOntology, ontology.getAxioms()); // keep asserted axioms
+        if (Logger.getLogger("SRW").isLoggable(Level.FINE)) {
+            Logger.getLogger("SRW").log(Level.FINE,
+                    "\n---------- ONTOLOGY CLOSED UNDER Cn*: \n"
+                            + HumanReadableAxiomExpressionGenerator
+                                    .generateExpressionForSet(
+                                            inferredOntology.getAxioms()));
+        }
         // obtain remainder
-        RemainderBuilder remainderBuilder = new RemainderBuilder(OWLManager.createOWLOntologyManager(),
-                reasonerFactory);
+        RemainderBuilder remainderBuilder = new RemainderBuilder(
+                OWLManager.createOWLOntologyManager(), reasonerFactory);
         remainderBuilder.setMaxQueueSize(maxQueueSize);
         remainderBuilder.setMaxRemainderElements(maxRemainderElements);
         Set<OWLAxiom> kb = inferredOntology.getAxioms();
         if (kb.isEmpty())
             throw new OWLException("The reasoner has failed to find the logic closure.");
         Set<Set<OWLAxiom>> remainderSet = remainderBuilder.remainderSet(kb, sentence);
-
         // apply a selection function
         Set<Set<OWLAxiom>> best = gamma.select(ontology, remainderSet);
-
+        if (Logger.getLogger("SRW").isLoggable(Level.FINER)) {
+            StringBuilder sb = new StringBuilder(
+                    "\n---------- " + (best.size()) + " SELECTED REMAINDER ELEMENT"
+                            + (best.size() != 1 ? "S" : "") + ": \n");
+            int i = 0;
+            for (Set<OWLAxiom> s : best) {
+                sb.append(String.format("\n[%d/%d]:\n", ++i, best.size())
+                        + HumanReadableAxiomExpressionGenerator
+                                .generateExpressionForSet(s));
+            }
+            Logger.getLogger("SRW").log(Level.FINER, sb.toString());
+        }
         // find intersection
         Iterator<Set<OWLAxiom>> it = best.iterator();
         Set<OWLAxiom> intersection = it.next();
         while (it.hasNext()) {
             Set<OWLAxiom> s = it.next();
-            for (Iterator<OWLAxiom> i = s.iterator(); i.hasNext();) {
-                OWLAxiom axiom = i.next();
-                if (!s.contains(axiom))
-                    i.remove();
+            Set<OWLAxiom> removing = new HashSet<OWLAxiom>();
+            for (OWLAxiom a : intersection) {
+                if (!s.contains(a))
+                    removing.add(a);
             }
+            for (OWLAxiom a : removing)
+                intersection.remove(a);
         }
-
         // remove "disjoint of owl:Nothing" axioms
         // (this prevents Protégé from showing owl:Nothing as a subclass of
         // owl:Thing)
-
         for (Iterator<OWLAxiom> i = intersection.iterator(); i.hasNext();) {
             OWLAxiom axiom = i.next();
             if (axiom.isOfType(AxiomType.DISJOINT_CLASSES)) {
-                for (OWLClass c : ((OWLDisjointClassesAxiom) axiom).getClassesInSignature())
+                for (OWLClass c : ((OWLDisjointClassesAxiom) axiom)
+                        .getClassesInSignature())
                     if (c.isBottomEntity()) {
                         i.remove();
                         break;
                     }
             }
-
         }
-
+        if (Logger.getLogger("SRW").isLoggable(Level.FINE)) {
+            Logger.getLogger("SRW").log(Level.FINE,
+                    "\n---------- FINAL ONTOLOGY: \n"
+                            + HumanReadableAxiomExpressionGenerator
+                                    .generateExpressionForSet(intersection));
+        }
         // return intersection as an ontology
         return intersection;
     }
 
     /**
-     * Returns the axiom generators that will be used by the reasoner to close
-     * the belief set under its consequence operator.
+     * Returns the axiom generators that will be used by the reasoner to close the
+     * belief set under its consequence operator.
      *
      * @return the list of axiom generators
      */
@@ -167,17 +193,17 @@ public class SRWPseudoContractor {
         // classes
         gens.add(new InferredClassAssertionAxiomGenerator());
         gens.add(new InferredSubClassAxiomGenerator());
-        gens.add(new InferredEquivalentClassAxiomGenerator());
-        gens.add(new InferredDisjointClassesAxiomGenerator());
+        /// gens.add(new InferredEquivalentClassAxiomGenerator());
+        /// gens.add(new InferredDisjointClassesAxiomGenerator());
         // data properties
-        gens.add(new InferredDataPropertyCharacteristicAxiomGenerator());
-        gens.add(new InferredEquivalentDataPropertiesAxiomGenerator());
-        gens.add(new InferredSubDataPropertyAxiomGenerator());
+        /// gens.add(new InferredDataPropertyCharacteristicAxiomGenerator());
+        /// gens.add(new InferredEquivalentDataPropertiesAxiomGenerator());
+        /// gens.add(new InferredSubDataPropertyAxiomGenerator());
         // object properties
-        gens.add(new InferredEquivalentObjectPropertyAxiomGenerator());
-        gens.add(new InferredInverseObjectPropertiesAxiomGenerator());
-        gens.add(new InferredObjectPropertyCharacteristicAxiomGenerator());
-        gens.add(new InferredSubObjectPropertyAxiomGenerator());
+        /// gens.add(new InferredEquivalentObjectPropertyAxiomGenerator());
+        /// gens.add(new InferredInverseObjectPropertiesAxiomGenerator());
+        /// gens.add(new InferredObjectPropertyCharacteristicAxiomGenerator());
+        /// gens.add(new InferredSubObjectPropertyAxiomGenerator());
         // individuals
         gens.add(new InferredPropertyAssertionGenerator());
         return gens;
@@ -224,5 +250,4 @@ public class SRWPseudoContractor {
     public void setMaxRemainderElements(int maxRemainderElements) {
         this.maxRemainderElements = maxRemainderElements;
     }
-
 }

@@ -18,7 +18,9 @@ import blackbox.remainder.AbstractBlackBoxRemainderShrinkingStrategy;
  *
  * @author Raphael M. Cóbe (adapted by Vinícius B. Matos)
  */
-public class SlidingWindowBlackBoxRemainderShrinkingStrategy extends AbstractBlackBoxRemainderShrinkingStrategy {
+public class SlidingWindowBlackBoxRemainderShrinkingStrategy
+        extends AbstractBlackBoxRemainderShrinkingStrategy {
+
     /**
      * The size of the sliding window.
      */
@@ -62,16 +64,15 @@ public class SlidingWindowBlackBoxRemainderShrinkingStrategy extends AbstractBla
         List<OWLAxiom> kbList = new ArrayList<>(kb);
         for (OWLAxiom x : keep)
             kbList.remove(x);
-
         int windowStart = 0;
         OWLOntology ontology = manager.createOntology(kb);
-
         while (windowStart < kbList.size()) {
             int windowEnd = windowStart + windowSize;
             if (windowEnd > (kbList.size() - 1)) {
                 windowEnd = kbList.size() - 1;
             }
-            HashSet<OWLAxiom> window = new HashSet<>(kbList.subList(windowStart, windowEnd));
+            HashSet<OWLAxiom> window = new HashSet<>(
+                    kbList.subList(windowStart, windowEnd));
             manager.removeAxioms(ontology, window);
             remains.addAll(window);
             if (!isEntailed(ontology, entailment)) {
@@ -80,7 +81,6 @@ public class SlidingWindowBlackBoxRemainderShrinkingStrategy extends AbstractBla
                 windowStart = windowStart + 1;
             }
         }
-
         return ontology.getAxioms();
     }
 }

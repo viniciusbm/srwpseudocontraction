@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.semanticweb.HermiT.ReasonerFactory;
 import org.semanticweb.owlapi.apibinding.OWLManager;
@@ -19,7 +21,7 @@ import com.beust.jcommander.ParameterException;
 
 import srwpseudocontraction.AlternativeOWLExpressionParser;
 import srwpseudocontraction.SRWPseudoContractor;
-import srwpseudocontraction.SelectionFunctionAny;
+import srwpseudocontraction.SelectionFunctionFull;
 
 /**
  * Command-line interface of the SRW pseudo-contractor.
@@ -29,71 +31,69 @@ import srwpseudocontraction.SelectionFunctionAny;
  */
 public class SRWPseudoContractionStandalone {
 
-    @Parameter(names = { "-i", "--input" }, description = "Input file name (OWL ontology)", required = true)
+    @Parameter(names = { "-i",
+            "--input" }, description = "Input file name (OWL ontology)", required = true)
     private String inputFileName;
-
-    @Parameter(names = { "-o", "--output" }, description = "Output file name", required = true)
+    @Parameter(names = { "-o",
+            "--output" }, description = "Output file name", required = true)
     private String outputFileName;
-
-    @Parameter(names = { "-f", "--formula" }, description = "Formula to be pseudo-contracted", required = true)
+    @Parameter(names = { "-f",
+            "--formula" }, description = "Formula to be pseudo-contracted", required = true)
     private String formulaString;
-
     @Parameter(names = { "--queue-limit" }, description = "Limit of the queue size")
     private Integer maxQueueSize = Integer.MAX_VALUE;
-
     @Parameter(names = {
             "--remainder-limit" }, description = "Maximum number of elements in the computer remainder set")
     private Integer maxRemainderSize = Integer.MAX_VALUE;
-
     @Parameter(names = { "-h", "--help" }, help = true)
     private boolean help = false;
 
     private void run() {
         OWLOntologyManager manager;
         OWLOntology ontology;
-
-        System.out.println("Opening the ontology...");
+        Logger.getLogger("SRW").log(Level.INFO, "Opening the ontology...");
         try {
             manager = OWLManager.createOWLOntologyManager();
             ontology = manager.loadOntologyFromOntologyDocument(new File(inputFileName));
         } catch (Exception e) {
-            System.err.printf("Could not open the ontology file '%s'.\n", inputFileName);
+            Logger.getLogger("SRW").log(Level.SEVERE, String
+                    .format("Could not open the ontology file '%s'.\n", inputFileName));
             return;
         }
-
-        System.out.println("Parsing the formula...");
-        OWLAxiom entailment = AlternativeOWLExpressionParser.parse(manager, ontology, formulaString);
+        Logger.getLogger("SRW").log(Level.INFO, "Parsing the formula...");
+        OWLAxiom entailment = AlternativeOWLExpressionParser.parse(manager, ontology,
+                formulaString);
         if (entailment == null) {
-            System.err.printf("Bad formula: \n\t%s\n", formulaString);
+            Logger.getLogger("SRW").log(Level.SEVERE,
+                    String.format("Bad formula: \n\t%s\n", formulaString));
             return;
         }
-
-        System.out.println("Creating the pseudo-contractor...");
-        SRWPseudoContractor pseudoContractor = new SRWPseudoContractor(manager, new ReasonerFactory(),
-                new SelectionFunctionAny());
+        Logger.getLogger("SRW").log(Level.INFO, "Creating the pseudo-contractor...");
+        SRWPseudoContractor pseudoContractor = new SRWPseudoContractor(manager,
+                new ReasonerFactory(), new SelectionFunctionFull());
         pseudoContractor.setMaxRemainderElements(maxRemainderSize);
         pseudoContractor.setMaxQueueSize(maxQueueSize);
-
-        System.out.println("Executing the operation...");
+        Logger.getLogger("SRW").log(Level.INFO, "Executing the operation...");
         OWLOntology inferredOntology;
         try {
-            inferredOntology = manager.createOntology(pseudoContractor.pseudocontract(ontology, entailment));
+            inferredOntology = manager.createOntology(
+                    pseudoContractor.pseudocontract(ontology, entailment));
         } catch (OWLException e) {
             e.printStackTrace();
             return;
         }
-
-        System.out.println("Saving...");
+        Logger.getLogger("SRW").log(Level.INFO, "Saving...");
         try {
             OutputStream s = new FileOutputStream(outputFileName);
             manager.saveOntology(inferredOntology, s);
         } catch (OWLOntologyStorageException | FileNotFoundException e) {
-            System.err.printf("Could not save the ontology into '%s.'\n", outputFileName);
+            Logger.getLogger("SRW").log(Level.SEVERE, String
+                    .format("Could not save the ontology into '%s.'\n", outputFileName));
             e.printStackTrace();
             return;
         }
-
-        System.out.printf("Success! Ontology saved to '%s'.\n", outputFileName);
+        Logger.getLogger("SRW").log(Level.INFO,
+                String.format("Success! Ontology saved to '%s'.\n", outputFileName));
     }
 
     private boolean isHelp() {

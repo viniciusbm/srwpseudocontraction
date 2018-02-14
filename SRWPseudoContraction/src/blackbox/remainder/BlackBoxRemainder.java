@@ -15,6 +15,7 @@ import blackbox.AbstractBlackBoxShrinkingStrategy;
  * @author Raphael M. Cóbe (adapted by Vinícius B. Matos)
  */
 public class BlackBoxRemainder extends AbstractBlackBox {
+
     /**
      * Instantiates the class.
      *
@@ -29,12 +30,14 @@ public class BlackBoxRemainder extends AbstractBlackBox {
     }
 
     @Override
-    public Set<OWLAxiom> blackBox(Set<OWLAxiom> ontology, OWLAxiom entailment, Set<OWLAxiom> initialSet)
-            throws OWLOntologyCreationException {
-        Set<OWLAxiom> contractionResult = this.shrinkingStrategy.shrink(ontology, entailment, initialSet);
-        Set<OWLAxiom> remains = ((AbstractBlackBoxRemainderShrinkingStrategy) this.shrinkingStrategy).getRemains();
-        ((AbstractBlackBoxRemainderExpansionStrategy) this.expansionStrategy).setRemains(remains);
+    public Set<OWLAxiom> blackBox(Set<OWLAxiom> ontology, OWLAxiom entailment,
+            Set<OWLAxiom> initialSet) throws OWLOntologyCreationException {
+        Set<OWLAxiom> contractionResult = this.shrinkingStrategy.shrink(ontology,
+                entailment, initialSet);
+        Set<OWLAxiom> remains = ((AbstractBlackBoxRemainderShrinkingStrategy) this.shrinkingStrategy)
+                .getRemains();
+        ((AbstractBlackBoxRemainderExpansionStrategy) this.expansionStrategy)
+                .setRemains(remains);
         return this.expansionStrategy.expand(contractionResult, entailment);
     }
-
 }

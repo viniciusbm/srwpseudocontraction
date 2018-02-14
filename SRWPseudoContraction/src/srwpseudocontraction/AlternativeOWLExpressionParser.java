@@ -42,7 +42,8 @@ public class AlternativeOWLExpressionParser {
      * @param ontology
      *            the ontology
      */
-    public AlternativeOWLExpressionParser(OWLOntologyManager manager, OWLOntology ontology) {
+    public AlternativeOWLExpressionParser(OWLOntologyManager manager,
+            OWLOntology ontology) {
         this.manager = manager;
         this.ontology = ontology;
     }
@@ -52,8 +53,8 @@ public class AlternativeOWLExpressionParser {
      *
      * @param expression
      *            the expression to parse
-     * @return the parsed axiom in the form of an OWLAxiom object, or
-     *         {@code null} if errors occur
+     * @return the parsed axiom in the form of an OWLAxiom object, or {@code null}
+     *         if errors occur
      */
     public OWLAxiom parse(String expression) {
         return parse(manager, ontology, expression);
@@ -68,20 +69,24 @@ public class AlternativeOWLExpressionParser {
      *            the ontology
      * @param expression
      *            the expression to parse
-     * @return the parsed axiom in the form of an OWLAxiom object, or
-     *         {@code null} if errors occur
+     * @return the parsed axiom in the form of an OWLAxiom object, or {@code null}
+     *         if errors occur
      */
-    public static OWLAxiom parse(OWLOntologyManager manager, OWLOntology ontology, String expression) {
-        Set<String> prefixes = manager.getOntologyFormat(ontology).asPrefixOWLOntologyFormat().getPrefixName2PrefixMap()
-                .keySet();
-        BidirectionalShortFormProviderAdapter sfp = new BidirectionalShortFormProviderAdapter(manager,
-                Collections.singleton(ontology), new ManchesterOWLSyntaxPrefixNameShortFormProvider(ontology));
-        OWLEntityChecker oec = new AlternativeShortFormEntityChecker(prefixes, sfp, ontology);
-        OWLExpressionParser<OWLAxiom> parser = new ManchesterOWLSyntaxInlineAxiomParser(manager.getOWLDataFactory(),
-                oec);
+    public static OWLAxiom parse(OWLOntologyManager manager, OWLOntology ontology,
+            String expression) {
+        Set<String> prefixes = manager.getOntologyFormat(ontology)
+                .asPrefixOWLOntologyFormat().getPrefixName2PrefixMap().keySet();
+        BidirectionalShortFormProviderAdapter sfp = new BidirectionalShortFormProviderAdapter(
+                manager, Collections.singleton(ontology),
+                new ManchesterOWLSyntaxPrefixNameShortFormProvider(ontology));
+        OWLEntityChecker oec = new AlternativeShortFormEntityChecker(prefixes, sfp,
+                ontology);
+        OWLExpressionParser<OWLAxiom> parser = new ManchesterOWLSyntaxInlineAxiomParser(
+                manager.getOWLDataFactory(), oec);
         try {
             return parser.parse(expression);
         } catch (OWLParserException e) {
+            e.printStackTrace();
             return null;
         }
     }

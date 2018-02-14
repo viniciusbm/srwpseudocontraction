@@ -17,9 +17,13 @@ public class SelectionFunctionAny implements SelectionFunction {
 
     @Override
     public Set<Set<OWLAxiom>> select(OWLOntology ontology, Set<Set<OWLAxiom>> setOfSets) {
+        if (setOfSets.isEmpty()) {
+            Set<Set<OWLAxiom>> result = new HashSet<Set<OWLAxiom>>();
+            result.add(ontology.getAxioms());
+            return result;
+        }
         Set<Set<OWLAxiom>> set = new HashSet<Set<OWLAxiom>>();
         set.add(setOfSets.iterator().next());
         return set;
     }
-
 }

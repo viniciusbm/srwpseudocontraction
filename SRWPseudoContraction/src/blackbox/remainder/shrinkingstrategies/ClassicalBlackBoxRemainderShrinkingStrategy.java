@@ -17,7 +17,9 @@ import blackbox.remainder.AbstractBlackBoxRemainderShrinkingStrategy;
  *
  * @author Raphael M. Cóbe (adapted by Vinícius B. Matos)
  */
-public class ClassicalBlackBoxRemainderShrinkingStrategy extends AbstractBlackBoxRemainderShrinkingStrategy {
+public class ClassicalBlackBoxRemainderShrinkingStrategy
+        extends AbstractBlackBoxRemainderShrinkingStrategy {
+
     /**
      * Instantiates the class.
      *
@@ -26,7 +28,8 @@ public class ClassicalBlackBoxRemainderShrinkingStrategy extends AbstractBlackBo
      * @param reasonerFactory
      *            a factory that consturcts the reasoner
      */
-    public ClassicalBlackBoxRemainderShrinkingStrategy(OWLOntologyManager manager, OWLReasonerFactory reasonerFactory) {
+    public ClassicalBlackBoxRemainderShrinkingStrategy(OWLOntologyManager manager,
+            OWLReasonerFactory reasonerFactory) {
         super(manager, reasonerFactory);
     }
 

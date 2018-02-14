@@ -4,6 +4,8 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.OWLAxiom;
@@ -15,6 +17,7 @@ import org.semanticweb.owlapi.reasoner.OWLReasoner;
 import org.semanticweb.owlapi.reasoner.OWLReasonerFactory;
 
 import blackbox.AbstractBlackBox;
+import srwpseudocontraction.HumanReadableAxiomExpressionGenerator;
 
 /**
  * Implements the classical Resina algorithm for computing the full remainder
@@ -30,8 +33,7 @@ public class ClassicalResinaRemainderBuilder extends AbstractResinaRemainderBuil
     private int maxQueueSize = Integer.MAX_VALUE;
 
     /**
-     * The maximum number of elements of the remainder set that will be
-     * computed.
+     * The maximum number of elements of the remainder set that will be computed.
      */
     private int maxRemainderElements = Integer.MAX_VALUE;
 
@@ -45,8 +47,8 @@ public class ClassicalResinaRemainderBuilder extends AbstractResinaRemainderBuil
      * @param reasonerFactory
      *            a factory that constructs the reasoner
      */
-    public ClassicalResinaRemainderBuilder(AbstractBlackBox blackBox, OWLOntologyManager manager,
-            OWLReasonerFactory reasonerFactory) {
+    public ClassicalResinaRemainderBuilder(AbstractBlackBox blackBox,
+            OWLOntologyManager manager, OWLReasonerFactory reasonerFactory) {
         super(blackBox, manager, reasonerFactory);
     }
 
@@ -61,23 +63,26 @@ public class ClassicalResinaRemainderBuilder extends AbstractResinaRemainderBuil
             throws OWLOntologyCreationException, OWLOntologyChangeException {
         HashSet<Set<OWLAxiom>> remainderSet = new HashSet<>();
         OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
-        OWLReasoner reasoner = reasonerFactory.createNonBufferingReasoner(manager.createOntology(kb));
+        OWLReasoner reasoner = reasonerFactory
+                .createNonBufferingReasoner(manager.createOntology(kb));
         Set<OWLAxiom> rem, hn;
-
         // create an empty queue
         Queue<Set<OWLAxiom>> queue = new LinkedList<>();
-
         // if the formula is not entailed, then there is nothing to do
         if (!reasoner.isEntailed(entailment)) {
             Set<Set<OWLAxiom>> unit = new HashSet<Set<OWLAxiom>>();
             unit.add(kb);
             return unit;
         }
-
         // get one element of the remainder set
         rem = this.blackBox.blackBox(kb, entailment);
         remainderSet.add(rem);
-
+        if (Logger.getLogger("SRW").isLoggable(Level.FINER)) {
+            Logger.getLogger("SRW").log(Level.FINER,
+                    "\n---------- REMAINDER ELEMENT: \n"
+                            + HumanReadableAxiomExpressionGenerator
+                                    .generateExpressionForSet(rem));
+        }
         // for each axiom s in kb and not in the remainder, add {s} to the queue
         for (OWLAxiom axiom : kb) {
             if (queue.size() >= maxQueueSize)
@@ -88,17 +93,18 @@ public class ClassicalResinaRemainderBuilder extends AbstractResinaRemainderBuil
             set.add(axiom);
             queue.add(set);
         }
-
         // prepare reasoner and ontology to be used in the main loop
         OWLOntology ont = manager.createOntology();
-        reasoner = reasonerFactory.createNonBufferingReasoner(ont);
-
+        if (remainderSet.size() >= maxRemainderElements)
+            return remainderSet;
         // while the queue is not empty...
         while (!queue.isEmpty()) {
             // hn <- queue.pop()
             hn = queue.remove();
             // check if hn entails the formula
             manager.addAxioms(ont, hn);
+            reasoner = reasonerFactory.createReasoner(ont); // TODO: avoid recreation of
+                                                            // the reasoner
             boolean entails = reasoner.isEntailed(entailment);
             manager.removeAxioms(ont, hn);
             if (entails)
@@ -108,6 +114,12 @@ public class ClassicalResinaRemainderBuilder extends AbstractResinaRemainderBuil
             rem = this.blackBox.blackBox(kb, entailment, hn);
             // add it to the remainder set
             remainderSet.add(rem);
+            if (Logger.getLogger("SRW").isLoggable(Level.FINER)) {
+                Logger.getLogger("SRW").log(Level.FINER,
+                        "\n---------- REMAINDER ELEMENT: \n"
+                                + HumanReadableAxiomExpressionGenerator
+                                        .generateExpressionForSet(rem));
+            }
             if (remainderSet.size() >= maxRemainderElements)
                 break;
             // for each axiom s in kb \ rem, add hn U {s} to the queue
@@ -167,5 +179,4 @@ public class ClassicalResinaRemainderBuilder extends AbstractResinaRemainderBuil
     public void setMaxRemainderElements(int maxRemainderElements) {
         this.maxRemainderElements = maxRemainderElements;
     }
-
 }

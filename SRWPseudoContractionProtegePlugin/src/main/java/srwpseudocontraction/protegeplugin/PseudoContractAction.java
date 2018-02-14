@@ -17,7 +17,7 @@ import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.reasoner.OWLReasonerFactory;
 
 import srwpseudocontraction.SRWPseudoContractor;
-import srwpseudocontraction.SelectionFunctionAny;
+import srwpseudocontraction.SelectionFunctionFull;
 
 /**
  * The action that is run after the user presses the "Pseudocontract" button in
@@ -52,8 +52,8 @@ public class PseudoContractAction implements ActionListener {
      * @param modelManager
      *            the model manager
      */
-    public PseudoContractAction(ExpressionEditor<OWLAxiom> axiomInputField, MainPanel panel,
-            OWLModelManager modelManager) {
+    public PseudoContractAction(ExpressionEditor<OWLAxiom> axiomInputField,
+            MainPanel panel, OWLModelManager modelManager) {
         this.axiomInputField = axiomInputField;
         this.modelManager = modelManager;
         this.panel = panel;
@@ -62,14 +62,16 @@ public class PseudoContractAction implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent arg0) {
         if (!axiomInputField.isWellFormed()) {
-            showErrorMessage("Ill-formed axiom expression:\n\"" + axiomInputField.getText() + "\"");
+            showErrorMessage("Ill-formed axiom expression:\n\""
+                    + axiomInputField.getText() + "\"");
             return;
         }
         OWLAxiom sentence;
         try {
             sentence = axiomInputField.createObject();
         } catch (OWLException e) {
-            showErrorMessage("The following expression could not be parsed:\n\"" + axiomInputField.getText() + "\"");
+            showErrorMessage("The following expression could not be parsed:\n\""
+                    + axiomInputField.getText() + "\"");
             e.printStackTrace();
             return;
         }
@@ -100,7 +102,8 @@ public class PseudoContractAction implements ActionListener {
      *            the msessage
      */
     private void showOKMessage(String message) {
-        JOptionPane.showMessageDialog(null, message, "Success", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(null, message, "Success",
+                JOptionPane.INFORMATION_MESSAGE);
     }
 
     /**
@@ -112,32 +115,27 @@ public class PseudoContractAction implements ActionListener {
      *             OWLException
      */
     private void pseudocontract(OWLAxiom sentence) throws OWLException {
-
         // get current ontology
         OWLOntology ontology = modelManager.getActiveOntology();
-
         // instantiate reasoner
         OWLReasonerManager reasonerManager = modelManager.getOWLReasonerManager();
-        OWLReasonerFactory reasonerFactory = reasonerManager.getCurrentReasonerFactory().getReasonerFactory();
-
+        OWLReasonerFactory reasonerFactory = reasonerManager.getCurrentReasonerFactory()
+                .getReasonerFactory();
         // create pseudo-contractor object
-        SRWPseudoContractor pseudoContractor = new SRWPseudoContractor(modelManager.getOWLOntologyManager(),
-                reasonerFactory, new SelectionFunctionAny());
+        SRWPseudoContractor pseudoContractor = new SRWPseudoContractor(
+                modelManager.getOWLOntologyManager(), reasonerFactory,
+                new SelectionFunctionFull());
         pseudoContractor.setMaxQueueSize(panel.getQueueCapacity());
         pseudoContractor.setMaxRemainderElements(panel.getMaxRemainderSize());
-
         // apply the operation
         Set<OWLAxiom> result = pseudoContractor.pseudocontract(ontology, sentence);
-
         // difference <- old \ new
         Set<OWLAxiom> difference = new HashSet<OWLAxiom>(ontology.getAxioms());
         difference.removeAll(result);
-
         // remove from the ontology the axioms not present in the result
         // and then add to the ontology all the axioms in the result
         OWLOntologyManager ontologyManager = modelManager.getOWLOntologyManager();
         ontologyManager.removeAxioms(ontology, difference);
         ontologyManager.addAxioms(ontology, result);
     }
-
 }
